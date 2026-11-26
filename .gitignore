@@ -1,0 +1,55 @@
+# Dependencies
+node_modules/
+**/node_modules/
+
+# Environment files
+.env
+.env.*
+!.env.example
+mobile/.env.local
+
+# Build output and caches
+build/
+**/build/
+dist/
+**/dist/
+coverage/
+**/coverage/
+web-build/
+**/web-build/
+.expo/
+**/.expo/
+.expo-shared/
+**/.expo-shared/
+
+# Android and Gradle generated files
+.gradle/
+**/.gradle/
+.cxx/
+**/.cxx/
+**/android/app/build/
+**/android/build/
+**/local.properties
+/mobile/android/
+/mobile/ios/
+
+# Signing material and credentials
+*.jks
+*.keystore
+*.p12
+*.pfx
+*.p8
+*.pem
+*.key
+*.mobileprovision
+*.provisionprofile
+*credentials*.json
+*serviceAccount*.json
+*service-account*.json
+google-services.json
+GoogleService-Info.plist
+
+# Local tooling and logs
+.claude/
+**/.claude/
+*.log
