@@ -2,6 +2,10 @@
 
 SecureID is a mobile-first authentication platform with an Expo/React Native Android app, a React/Vite web client, and a Node.js/Express API backed by MongoDB. It supports email one-time passcodes, passkeys, single-session tokens, and secure mobile token storage.
 
+## Download
+
+[Download the SecureID Android APK](https://github.com/sahilllm-cloud/SecureID/releases/download/v1.0.0/SecureID-v1.0.0.apk) or view the [v1.0.0 release](https://github.com/sahilllm-cloud/SecureID/releases/tag/v1.0.0).
+
 ## Requirements
 
 - Node.js 20 or newer
