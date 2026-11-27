@@ -8,6 +8,10 @@ import authRouter from './routes/auth.js'
 
 const app = express()
 
+if (process.env.RENDER === 'true') {
+  app.set('trust proxy', 1)
+}
+
 app.disable('x-powered-by')
 app.use(helmet())
 app.use(cors({ origin: config.clientOrigin, credentials: true }))

@@ -93,6 +93,25 @@ function sessionResponse(req, user, token) {
   return response
 }
 
+function safeErrorCode(error) {
+  const value = error?.code || error?.name || 'UNKNOWN'
+  return String(value).replace(/[^\w.-]/g, '').slice(0, 80) || 'UNKNOWN'
+}
+
+function logOtpOperationFailure(operation, error) {
+  console.error(operation, { code: safeErrorCode(error) })
+}
+
+async function discardUndeliveredChallenge(challengeId) {
+  try {
+    await AuthChallenge.deleteOne({ _id: challengeId, consumedAt: null })
+  } catch (error) {
+    console.error('Unable to invalidate undelivered OTP challenge:', {
+      code: safeErrorCode(error),
+    })
+  }
+}
+
 async function issueOtp({ kind, userId, email, signupData }) {
   const code = createOtp()
   const challenge = await AuthChallenge.create({
@@ -109,7 +128,7 @@ async function issueOtp({ kind, userId, email, signupData }) {
   try {
     if (email) await sendOtpEmail(email, code)
   } catch (error) {
-    await AuthChallenge.deleteOne({ _id: challenge._id })
+    await discardUndeliveredChallenge(challenge._id)
     throw error
   }
 
@@ -165,10 +184,10 @@ router.post('/signup', otpStartLimiter, async (req, res) => {
       delivery: normalizedEmail,
     })
   } catch (error) {
-    if (error.message.startsWith('Email delivery is not configured')) {
+    if (error.code === 'EMAIL_NOT_CONFIGURED') {
       return res.status(503).json({ error: error.message })
     }
-    console.error('Unable to deliver signup verification email:', error)
+    logOtpOperationFailure('Signup OTP operation failed:', error)
     return res.status(502).json({ error: 'We could not deliver your verification email. Please try again.' })
   }
 })
@@ -194,10 +213,10 @@ router.post('/otp/request', otpStartLimiter, async (req, res) => {
       message: 'If an account exists, a verification code has been sent to its email.',
     })
   } catch (error) {
-    if (error.message.startsWith('Email delivery is not configured')) {
+    if (error.code === 'EMAIL_NOT_CONFIGURED') {
       return res.status(503).json({ error: error.message })
     }
-    console.error('Unable to deliver sign-in verification email:', error)
+    logOtpOperationFailure('Sign-in OTP operation failed:', error)
     return res.status(502).json({ error: 'We could not deliver your verification email. Please try again.' })
   }
 })
@@ -254,10 +273,11 @@ router.post('/otp/resend', otpResendLimiter, async (req, res) => {
       delivery: email,
     })
   } catch (error) {
-    if (error.message.startsWith('Email delivery is not configured')) {
+    await discardUndeliveredChallenge(challenge._id)
+    if (error.code === 'EMAIL_NOT_CONFIGURED') {
       return res.status(503).json({ error: error.message })
     }
-    console.error('Unable to resend verification email:', error)
+    logOtpOperationFailure('OTP resend operation failed:', error)
     return res.status(502).json({ error: 'We could not deliver a new code. Please try again later.' })
   }
 })

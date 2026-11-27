@@ -3,6 +3,9 @@
     "preview": {
       "distribution": "internal",
       "environment": "preview",
+      "env": {
+        "EXPO_PUBLIC_API_URL": "https://secureid-iw62.onrender.com"
+      },
       "android": {
         "buildType": "apk"
       }

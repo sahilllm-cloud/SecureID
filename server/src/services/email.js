@@ -1,67 +1,62 @@
-import nodemailer from 'nodemailer'
+import { Resend } from 'resend'
 import { config } from '../config.js'
 
-let transporter
+let resendClient
 
-function redactDiagnostic(value) {
-  let message = String(value ?? 'Unknown SMTP error')
+function redactDiagnostic(value, recipient) {
+  let message = String(value ?? 'Unknown Resend API error')
+  const senderAddress = config.emailFrom?.match(/<([^>]+)>/)?.[1]
 
-  for (const secret of [config.smtpPass, config.smtpUser, config.emailFrom]) {
+  for (const secret of [config.resendApiKey, config.emailFrom, senderAddress, recipient]) {
     if (secret) message = message.split(secret).join('[redacted]')
   }
 
-  return message.replace(/\b\d{6}\b/g, '[redacted-code]').slice(0, 500)
+  return message
+    .replace(/\bre_[A-Za-z0-9_-]+\b/g, '[redacted-key]')
+    .replace(/\b\d{6}\b/g, '[redacted-code]')
+    .slice(0, 500)
 }
 
-function logSmtpFailure(error) {
-  const code = redactDiagnostic(error?.code || error?.responseCode || 'UNKNOWN')
-  const message = redactDiagnostic(error?.message || error)
-  console.error('SMTP transport failure:', { code, message })
+function logResendFailure(error, recipient) {
+  const code = redactDiagnostic(error?.name || error?.code || 'RESEND_ERROR', recipient)
+    .replace(/[^\w.-]/g, '')
+    .slice(0, 80) || 'RESEND_ERROR'
+  const statusCode = Number.isInteger(error?.statusCode) ? error.statusCode : undefined
+  const message = redactDiagnostic(error?.message || error, recipient)
+  console.error('Resend email delivery failed:', { code, statusCode, message })
 
-  const safeError = new Error(`SMTP transport failed (${code}): ${message}`)
-  safeError.name = 'SmtpTransportError'
-  safeError.code = code
+  const safeError = new Error(`Email delivery failed (${code}).`)
+  safeError.name = 'EmailDeliveryError'
+  safeError.code = 'EMAIL_DELIVERY_FAILED'
   return safeError
 }
 
-function getTransporter() {
-  if (!config.smtpHost || !config.smtpUser || !config.smtpPass || !config.emailFrom) {
-    throw new Error('Email delivery is not configured. Set SMTP_HOST, SMTP_USER, SMTP_PASS, and EMAIL_FROM.')
+function getResendClient() {
+  if (!config.resendApiKey || !config.emailFrom) {
+    const error = new Error('Email delivery is not configured. Set RESEND_API_KEY and EMAIL_FROM.')
+    error.code = 'EMAIL_NOT_CONFIGURED'
+    throw error
   }
 
-  if (!transporter) {
-    transporter = nodemailer.createTransport({
-      host: config.smtpHost,
-      port: config.smtpPort,
-      secure: config.smtpSecure,
-      auth: { user: config.smtpUser, pass: config.smtpPass },
-    })
-  }
-
-  return transporter
-}
-
-export async function verifyEmailTransport() {
-  const mailTransporter = getTransporter()
-
-  try {
-    await mailTransporter.verify()
-  } catch (error) {
-    throw logSmtpFailure(error)
-  }
+  if (!resendClient) resendClient = new Resend(config.resendApiKey)
+  return resendClient
 }
 
 export async function sendOtpEmail(email, code) {
-  const mailTransporter = getTransporter()
+  const client = getResendClient()
+  let result
 
   try {
-    await mailTransporter.sendMail({
+    result = await client.emails.send({
       from: config.emailFrom,
-      to: email,
+      to: [email],
       subject: 'Your SecureID verification code',
       text: `Your SecureID verification code is ${code}. It expires in 10 minutes. If you did not request this code, you can ignore this message.`,
     })
   } catch (error) {
-    throw logSmtpFailure(error)
+    throw logResendFailure(error, email)
   }
+
+  if (result.error) throw logResendFailure(result.error, email)
+  if (!result.data?.id) throw logResendFailure(new Error('Resend returned no email ID.'), email)
 }

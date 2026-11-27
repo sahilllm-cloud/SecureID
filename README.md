@@ -1,6 +1,6 @@
 # SecureID
 
-SecureID is a React/Vite authentication client and an Express/MongoDB API. It supports six-digit email verification codes, optional phone-number sign-in identifiers, single-session enforcement, and device passkeys.
+SecureID is a mobile-first authentication platform with an Expo/React Native Android app, a React/Vite web client, and a Node.js/Express API backed by MongoDB. It supports email one-time passcodes, passkeys, single-session tokens, and secure mobile token storage.
 
 ## Requirements
 
@@ -64,4 +64,4 @@ Scan the Expo QR code with Expo Go, submit a new email address, then enter the c
 
 ## Android APK with EAS
 
-The mobile app's EAS `preview` profile builds an installable APK. Before building, set the EAS `preview` environment variable `EXPO_PUBLIC_API_URL` to the deployed HTTPS API origin (for example `https://api.your-domain.example`, without `/api`). EAS release config rejects missing, HTTP, localhost, and emulator API URLs. The ignored `mobile/.env.local` is for local development only and must not supply the APK URL. SMTP and database credentials belong only in the backend environment, never the mobile app.
+The mobile app's EAS `preview` profile builds an installable APK and sets the public `EXPO_PUBLIC_API_URL` to `https://secureid-iw62.onrender.com`. If the EAS `preview` environment also defines this variable, keep it set to the same URL. EAS release config rejects missing, HTTP, localhost, and emulator API URLs. The ignored `mobile/.env.local` is for local development only and does not configure the APK. SMTP and database credentials belong only in the backend environment, never the mobile app.
